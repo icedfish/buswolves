@@ -7,7 +7,7 @@ html
 		style
 			body, input {
 				font-family: 'Microsoft Yahei';
-				font-size: 12px;
+				font-size: 14px;
 				line-height: 1.5;
 			}
 			header, section {
@@ -23,20 +23,21 @@ html
 			textarea#fn, input#re {
 				display:block;
 			}
-			#viewer {
+			#logs {
 				position: fixed;
 				bottom: 0;
 				left: 24%;
 				right: 0;
 				top: 0;
-			}
-			#logs {
 				overflow: auto;
 				color: white;
 				background: black;
 				font-family: Consolas, 'Courier New', monospace;
 				font-size: 12px;
 				line-height: 1.5;
+				white-space: nowrap;
+				list-style: none;
+				padding-left: 0;
 			}
 			#logs li {
 				-webkit-transition: height 0.5s, color 0.5s;
@@ -104,10 +105,10 @@ html
 						each url in urls
 							li
 								label
-									input(type='checkbox')
+									input(type='checkbox', checked)
 									output #{url}
 								input(type='search')
-					input(type='submit', value='howl')
+					input(type='submit', value='般若波罗蜜！')
 					script
 						document.getElementById('bus').addEventListener('submit', function(evt) {
 							reset()
@@ -122,12 +123,12 @@ html
 					p
 						input#apply-re(type='checkbox', checked)
 						label(for='re') 正则过滤
-						input#use-re(type='button', value='use')
+						input#use-re(type='button', value='传送门')
 						input#re(type='search')
 					p
 						input#apply-fn(type='checkbox')
 						label(for='fn') 函数过滤
-						input#use-fn(type='button', value='use')
+						input#use-fn(type='button', value='传送门')
 						textarea#fn(cols=40, rows=8)
 							|function filter(event) {
 							|	return event.type === 'message' &&
@@ -185,6 +186,5 @@ html
 									filter.value = filterFunction
 								})
 						})
-		section#viewer
+		section
 			ol#logs
-

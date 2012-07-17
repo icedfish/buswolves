@@ -86,6 +86,6 @@ var server = net.createServer(function(socket){
 })
 
 app.listen(3000, function(){
-	console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
+	console.log("Express HTTP server started!");
 })
 server.listen(1095)
