@@ -82,6 +82,7 @@ var server = net.createServer(function(socket){
 	
 	socket.once('data', function(data){
 		var channel, i = data.indexOf('\n\n')
+		console.log(data, i)
 		if (i >= 0) {
 			var name = data.slice(0, i).split('\n', 1)[0].trim()
 			channel = findChannel(name)

@@ -1,0 +1,1 @@
+tail -f testnamed.log | nc localhost 1095
