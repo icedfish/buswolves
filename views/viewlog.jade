@@ -1,0 +1,61 @@
+doctype 5
+html
+	head
+		meta(charset='utf-8')
+		title View Log
+		style
+			#logs {
+				overflow: auto;
+				color: white;
+				background: black;
+				font-family: Consolas, 'Courier New', monospace;
+				font-size: 10px;
+				line-height: 1.5;
+				min-height: 300px;
+				max-height: 480px;
+				max-height: 0.8vh;
+			}
+			li {
+				-webkit-transition: height 0.5s, color 0.5s;
+				height: 1.5em;
+			}
+			li[hidden] {
+				display: list-item;
+				height: 0;
+				color: transparent;
+			}
+		script
+			var source = new EventSource('update-logs')
+			source.onmessage = function(evt) {
+				var li = document.createElement('li')
+				if (filterPattern && !filterPattern.test(evt.data)) li.hidden = true
+				li.appendChild(document.createTextNode(evt.data))
+				document.getElementById('logs').appendChild(li)
+				li.scrollIntoView()
+			}
+			function updateLogs() {
+				var node = document.getElementById('logs').lastChild
+				while (node) {
+					node.hidden = !filterPattern.test(node.textContent)
+					node = node.previousSibling
+				}
+			}
+	body
+
+		form
+			label(for='filter') 过滤
+			input#filter(type='search')	
+			script
+				var filterPattern
+				var filterInput = document.getElementById('filter')
+				filterInput.addEventListener('input', function(evt) {
+					try {
+						filterPattern = new RegExp(evt.target.value)
+						updateLogs()
+					} catch(e) {
+						console.error(e)
+					}
+				})
+
+		ol#logs
+

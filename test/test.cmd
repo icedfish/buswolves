@@ -1,0 +1,1 @@
+tail -f test.log | nc localhost 1095
