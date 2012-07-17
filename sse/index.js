@@ -4,7 +4,6 @@ var EventEmitter = require('events').EventEmitter
 
 
 function ServerEventSource() {
-	this.buffer = []
 	this.events = []
 	this.lastEventId = 10000
 	this.emitter = new EventEmitter()
@@ -43,34 +42,50 @@ ServerEventSource.prototype.off = function (event, listener) {
 ServerEventSource.prototype.fire = function (event, data) {
 	var result = this.emitter.emit.apply(this.emitters, arguments)
 	
-	if (event != 'data')
+	if (event === 'sse') return
+	
+	var id = this.nextEventId()
+	
 	var s = data == null ?
 			'' : (data.replace(/^/gm, 'data: ') + '\n')
 	if (event !== 'message') s += 'event: ' + event + '\n'
-	s += 'id: ' + this.nextEventId() + '\n\n'
-	this.buffer.push(s)
-	this.emitter.emit('data', s)
+	if (id != null) s += 'id: ' + id + '\n'
+	s += '\n'
+	
+	var evt = {
+		type: event,
+		data: data,
+		lastEventId: id,
+		toString: function() { return s }
+	}
+	this.events.push(evt)
+	this.emitter.emit('sse', evt)
 }
 ServerEventSource.prototype.send = function (data) {
 	console.log('send', data)
 	this.fire('message', data)
 }
 
-ServerEventSource.prototype.addClient = function (request, response) {
+ServerEventSource.prototype.addClient = function (request, response, filter) {
 	response.writeHead(200, ServerEventSource.headers)
+	
+	var push = filter == null ?
+		function (evt) { response.write(evt.toString()) } :
+		function (evt) { if (filter(evt)) response.write(evt.toString()) }
+	
 	var lastEventId = request.headers['Last-Event-ID']
 	var i = lastEventId == null ? 0 :
 			parseInt(lastEventId) - this.lastEventId - 1
-	while (i < this.buffer.length) {
-		response.write(this.buffer[i])
+	while (i < this.events.length) {
+		push(this.events[i])
 		i++
 	}
+	
 	var evtSrc = this
-	var push = response.write.bind(response)
-	evtSrc.on('data', push)
+	evtSrc.on('sse', push)
 	response.once('close', function(){
-		evtSrc.off('data', push)
-	})
+		evtSrc.off('sse', push)
+	})	
 }
 
 

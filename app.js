@@ -25,27 +25,46 @@ app.configure('production', function(){
 
 // Application
 
-var bus = new sse.ServerEventSource()
+var bus = []
 
 app.get('/', function (req, res) {
-	res.render('viewlog')
+	res.render('viewlog', {bus:bus})
 })
-app.get('/update-logs', function (req, res) {
-	bus.addClient(req, res)
+app.get('/bus', function (req, res) {
+	if (req.accepts('json')) res.send(bus.map(function(_, i){ return '/bus/' + i }))
+	res.render('bus', {bus:bus})
+})
+app.get('/bus/:channel/:filter?', function (req, res) {
+	//console.log(req.params.channel, req.params.filter)
+	var ch = bus[req.params.channel]
+	if (!ch) return res.send('No such channel', 404)
+	var filter = req.params.filter
+	console.log('filter', filter)
+	try {
+		var re = new RegExp(filter)
+		filter = function(evt){
+			return re.test(evt.data)
+		}
+	} catch(e) {
+		filter = null
+	}
+	ch.addClient(req, res, filter)
 })
 var server = net.createServer(function(socket){
 	//socket.write('Echo server\r\n');
+	var channel = new sse.ServerEventSource()
+	bus.push(channel)
 	socket.setEncoding()
 	socket.on('data', function(data){
 		var lines = data.split('\n')
+		if (lines[lines.length - 1] === '') lines.pop()
 		lines.forEach(function(line){
-			bus.send(line)
+			channel.send(line)
 		})
 	})
 })
 
 app.listen(3000, function(){
-	console.log("Express HTTP server started!");
+	console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
 })
-
 server.listen(1095)

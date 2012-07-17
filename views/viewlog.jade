@@ -2,32 +2,62 @@ doctype 5
 html
 	head
 		meta(charset='utf-8')
-		script(src='http://static.baixing.net/media/js/jquery-1.7.2.min.js')
 		title BusWolves RealTime Log Supplier 
+		script(src='http://static.baixing.net/media/js/jquery-1.7.2.min.js')
 		style
+			body, input {
+				font-family: 'Microsoft Yahei';
+				font-size: 12px;
+				line-height: 1.5;
+			}
+			header, section {
+				margin: 1em 0;
+			}
+			nav ul {
+				list-style: none;
+				padding-left: 0;
+			}
+			nav form input[type="submit"] {
+				margin-left: 12em;
+			}
+			#viewer {
+				position: fixed;
+				bottom: 0;
+				left: 24%;
+				right: 0;
+				top: 0;
+			}
 			#logs {
 				overflow: auto;
 				color: white;
 				background: black;
 				font-family: Consolas, 'Courier New', monospace;
-				font-size: 10px;
+				font-size: 12px;
 				line-height: 1.5;
-				min-height: 300px;
-				max-height: 480px;
-				max-height: 0.8vh;
 			}
-			li {
+			#logs li {
 				-webkit-transition: height 0.5s, color 0.5s;
 				height: 1.5em;
 			}
-			li[hidden] {
+			#logs li[hidden] {
 				display: list-item;
 				height: 0;
 				color: transparent;
 			}
 		script
-			var source = new EventSource('update-logs')
-			source.onmessage = function(evt) {
+			var srcList = []
+			function reset() {
+				while (src = srcList.pop()) {
+					src.close()
+				}
+				document.getElementById('logs').innerHTML = ''
+			}
+			function listen(url) {
+				var source = new EventSource(url)
+				srcList.push(source)
+				source.onmessage = processMessage
+			}
+			function processMessage(evt) {
 				var li = document.createElement('li')
 				if (filterPattern && !filterPattern.test(evt.data)) li.hidden = true
 				li.appendChild(document.createTextNode(evt.data))
@@ -42,8 +72,36 @@ html
 				}
 			}
 	body
-
-		form
+		header
+			nav
+				form#bus
+					ul
+						each _, i in bus
+							li
+								label
+									input(type='checkbox')
+									output /bus/#{i}/
+								input(type='search')
+					input(type='submit', value='howl')
+					script
+						document.getElementById('bus').addEventListener('submit', function(evt) {
+							reset()
+							var f = evt.target
+							var list = f.querySelectorAll('li')
+							for (var i = 0; i < list.length; i++) {
+								var li = list[i]
+								var checkbox = li.querySelector('input[type="checkbox"]')
+								var channel = li.querySelector('output')
+								var filter = li.querySelector('input[type="search"]')
+								if (checkbox.checked) {
+									var url = encodeURI(channel.value + filter.value)
+									console.log(url)
+									listen(url)
+								}
+							}
+							evt.preventDefault()
+						})
+		section#viewer
 			label(for='filter') 过滤
 			input#filter(type='search')	
 			script
@@ -54,9 +112,8 @@ html
 						filterPattern = new RegExp(evt.target.value)
 						updateLogs()
 					} catch(e) {
-						console.error(e)
+						//console.error(e)
 					}
 				})
-
-		ol#logs
+			ol#logs
 
