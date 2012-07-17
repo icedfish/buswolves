@@ -25,10 +25,18 @@ app.configure('production', function(){
 
 // Application
 
-var bus = []
+var bus = {}
 
+function findChannel(name) {
+	if (name in bus)
+		return bus[name]
+	else
+		return bus[name] =
+			new sse.ServerEventSource({trackEventId:true, maxBufferSize:1000000})
+}
+			
 function busUrls() {
-	return bus.map(function(_, i){ return '/bus/' + i + '/' })
+	return Object.keys(bus).map(function(name){ return '/bus/' + name + '/' })
 }
 
 app.get('/', function (req, res) {
@@ -70,19 +78,28 @@ app.get('/bus/:channel/:filter?', function (req, res) {
 })
 var server = net.createServer(function(socket){
 	//socket.write('Echo server\r\n');
-	var channel = new sse.ServerEventSource({trackEventId:true, maxBufferSize:1000000})
 	socket.setEncoding()
-	socket.on('data', function(data){
-		var lines = data.split('\n')
-		if (lines[lines.length - 1] === '') lines.pop()
-		lines.forEach(function(line){
-			channel.send(line)
-		})
-	})
-	var index = bus.push(channel) - 1
-	socket.on('close', function(){
-		delete bus[index]
-	})
+	
+	socket.once('data', function(data){
+		var channel, i = data.indexOf('\n\n')
+		if (i >= 0) {
+			var name = data.slice(0, i).split('\n', 1)[0].trim()
+			channel = findChannel(name)
+			process(data.slice(i + 2))
+		} else {
+			channel = findChannel('wolves')
+			process(data)
+		}
+		socket.on('data', process)
+		
+		function process(data){
+			var lines = data.split('\n')
+			if (lines[lines.length - 1] === '') lines.pop()
+			lines.forEach(function(line){
+				channel.send(line)
+			})
+		}
+	})	
 })
 
 app.listen(3000, function(){
