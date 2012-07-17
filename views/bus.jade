@@ -1,5 +1,6 @@
 nav
 	ul
-		each _, i in bus
-			li
-				a(href="/bus/" + i) bus/#{i}
+		each url in urls
+			if url
+				li
+					a(href=url) #{url}

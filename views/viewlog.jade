@@ -20,6 +20,9 @@ html
 			nav form input[type="submit"] {
 				margin-left: 12em;
 			}
+			textarea#fn, input#re {
+				display:block;
+			}
 			#viewer {
 				position: fixed;
 				bottom: 0;
@@ -59,16 +62,38 @@ html
 			}
 			function processMessage(evt) {
 				var li = document.createElement('li')
-				if (filterPattern && !filterPattern.test(evt.data)) li.hidden = true
+				if (filterPattern && !filterPattern.test(evt.data) ||
+					filterFunction && !filterFunction(evt)) li.hidden = true
 				li.appendChild(document.createTextNode(evt.data))
+				li.dataset.type = evt.type
+				li.dataset.lastEventId = evt.lastEventId
+				li.dataset.timeStamp = evt.timeStamp
 				document.getElementById('logs').appendChild(li)
 				li.scrollIntoView()
 			}
 			function updateLogs() {
 				var node = document.getElementById('logs').lastChild
 				while (node) {
-					node.hidden = !filterPattern.test(node.textContent)
+					node.hidden = filterPattern && !filterPattern.test(node.textContent) ||
+						filterFunction && !filterFunction({
+							data: node.textContent,
+							type: node.dataset.type,
+							lastEventId: node.dataset.lastEventId,
+							timeStamp: node.dataset.timeStamp
+						})
 					node = node.previousSibling
+				}
+			}
+			function eachSelectedChannel(fn) {
+				var list = document.querySelectorAll('#bus li')
+				for (var i = 0; i < list.length; i++) {
+					var li = list[i]
+					var checkbox = li.querySelector('input[type="checkbox"]')
+					var channel = li.querySelector('output')
+					var filter = li.querySelector('input[type="search"]')
+					if (checkbox.checked) {
+						fn(channel, filter)
+					}
 				}
 			}
 	body
@@ -76,44 +101,90 @@ html
 			nav
 				form#bus
 					ul
-						each _, i in bus
+						each url in urls
 							li
 								label
 									input(type='checkbox')
-									output /bus/#{i}/
+									output #{url}
 								input(type='search')
 					input(type='submit', value='howl')
 					script
 						document.getElementById('bus').addEventListener('submit', function(evt) {
 							reset()
-							var f = evt.target
-							var list = f.querySelectorAll('li')
-							for (var i = 0; i < list.length; i++) {
-								var li = list[i]
-								var checkbox = li.querySelector('input[type="checkbox"]')
-								var channel = li.querySelector('output')
-								var filter = li.querySelector('input[type="search"]')
-								if (checkbox.checked) {
-									var url = encodeURI(channel.value + filter.value)
-									console.log(url)
-									listen(url)
-								}
-							}
+							eachSelectedChannel(function(channel, filter){
+								var url = channel.value + encodeURIComponent(filter.value)
+								console.log(url)
+								listen(url)
+							})
 							evt.preventDefault()
 						})
+				form#filters
+					p
+						input#apply-re(type='checkbox', checked)
+						label(for='re') 正则过滤
+						input#use-re(type='button', value='use')
+						input#re(type='search')
+					p
+						input#apply-fn(type='checkbox')
+						label(for='fn') 函数过滤
+						input#use-fn(type='button', value='use')
+						textarea#fn(cols=40, rows=8)
+							|function filter(event) {
+							|	return event.type === 'message' &&
+							|		event.data.match(/.+/) &&
+							|		event.timeStamp > Date.now() - 600000000
+							|}
+					script
+						var filterPattern, filterFunction
+						var filterInput = document.getElementById('re')
+						filterInput.addEventListener('input', function(evt) {
+							if (document.getElementById('apply-re').checked) {
+								try {
+									filterPattern = new RegExp(evt.target.value)
+									updateLogs()
+								} catch(e) {
+									//console.error(e)
+								}
+							}
+						})
+						document.getElementById('apply-re').addEventListener('click', function() {
+							if (this.checked) {
+								try {
+									filterPattern = new RegExp(document.getElementById('re').value)
+									updateLogs()
+								} catch(e) {
+									alert(e)
+								}
+							} else {
+								filterPattern = null
+								updateLogs()
+							}
+						})
+						document.getElementById('apply-fn').addEventListener('click', function() {
+							if (this.checked) {
+								try {
+									filterFunction = new Function('return ' + document.getElementById('fn').value)()
+									updateLogs()
+								} catch(e) {
+									alert(e)
+								}
+							} else {
+								filterFunction = null
+								updateLogs()
+							}
+						})
+						document.getElementById('use-re').addEventListener('click', function() {
+							if (filterPattern)
+								eachSelectedChannel(function(channel, filter){
+									filter.value = filterPattern
+								})
+						})
+						document.getElementById('use-fn').addEventListener('click', function() {
+							if (filterFunction)
+								eachSelectedChannel(function(channel, filter){
+									filter.value = filterFunction
+								})
+						})
 		section#viewer
-			label(for='filter') 过滤
-			input#filter(type='search')	
-			script
-				var filterPattern
-				var filterInput = document.getElementById('filter')
-				filterInput.addEventListener('input', function(evt) {
-					try {
-						filterPattern = new RegExp(evt.target.value)
-						updateLogs()
-					} catch(e) {
-						//console.error(e)
-					}
-				})
 			ol#logs
 

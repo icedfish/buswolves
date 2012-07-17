@@ -3,16 +3,18 @@
 var EventEmitter = require('events').EventEmitter
 
 
-function ServerEventSource() {
+function ServerEventSource(option) {
+	this.option = option || {}
 	this.events = []
-	this.lastEventId = 10000
+	this.bufferSize = 0
+	this.lastEventId = this.option.firstEventId || 10000
 	this.emitter = new EventEmitter()
 }
 
 ServerEventSource.headers = { 'Content-Type': 'text/event-stream' }
 
 ServerEventSource.prototype.nextEventId = function () {
-	return this.lastEventId + 1
+	return this.option.trackEventId ? ++this.lastEventId : null
 }
 ServerEventSource.prototype.eventIndexOf = function (id) {
 }
@@ -52,13 +54,19 @@ ServerEventSource.prototype.fire = function (event, data) {
 	if (id != null) s += 'id: ' + id + '\n'
 	s += '\n'
 	
+	
 	var evt = {
 		type: event,
 		data: data,
 		lastEventId: id,
+		timeStamp: Date.now(),
 		toString: function() { return s }
 	}
-	this.events.push(evt)
+	if (this.option.maxBufferSize) {
+		this.bufferSize += s.length
+		if (this.bufferSize > this.option.maxBufferSize) this.clear()
+		this.events.push(evt)
+	}
 	this.emitter.emit('sse', evt)
 }
 ServerEventSource.prototype.send = function (data) {
@@ -71,11 +79,18 @@ ServerEventSource.prototype.addClient = function (request, response, filter) {
 	
 	var push = filter == null ?
 		function (evt) { response.write(evt.toString()) } :
-		function (evt) { if (filter(evt)) response.write(evt.toString()) }
+		function (evt) {
+			try {
+				if (filter(evt)) {
+					response.write(evt.toString())
+				}
+			} catch(e) {}
+		}
 	
 	var lastEventId = request.headers['Last-Event-ID']
 	var i = lastEventId == null ? 0 :
 			parseInt(lastEventId) - this.lastEventId - 1
+	if (!(i >= 0)) i = 0
 	while (i < this.events.length) {
 		push(this.events[i])
 		i++

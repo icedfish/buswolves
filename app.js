@@ -27,12 +27,19 @@ app.configure('production', function(){
 
 var bus = []
 
+function busUrls() {
+	return bus.map(function(_, i){ return '/bus/' + i + '/' })
+}
+
 app.get('/', function (req, res) {
-	res.render('viewlog', {bus:bus})
+	res.render('viewlog', {urls:busUrls()})
 })
 app.get('/bus', function (req, res) {
-	if (req.accepts('json')) res.send(bus.map(function(_, i){ return '/bus/' + i }))
-	res.render('bus', {bus:bus})
+	var urls = busUrls()
+	if (req.accepts('html'))
+		res.render('bus', {urls:urls})
+	else if (req.accepts('json'))
+		res.send(urls)
 })
 app.get('/bus/:channel/:filter?', function (req, res) {
 	//console.log(req.params.channel, req.params.filter)
@@ -40,20 +47,30 @@ app.get('/bus/:channel/:filter?', function (req, res) {
 	if (!ch) return res.send('No such channel', 404)
 	var filter = req.params.filter
 	console.log('filter', filter)
-	try {
-		var re = new RegExp(filter)
-		filter = function(evt){
-			return re.test(evt.data)
+	if (filter) {
+		if (/^\s*function\s*/.test(filter)) {
+			try {
+				filter = new Function('return ' + filter)()
+			} catch(e) {}
 		}
-	} catch(e) {
-		filter = null
+		if (typeof filter !== 'function')
+		try {
+			var re = new RegExp(filter)
+			filter = function(evt){
+				return re.test(evt.data)
+			}
+		} catch(e) {
+			var str = filter
+			filter = function(evt){
+				return evt.data.indexOf(str) !== -1
+			}
+		}
 	}
 	ch.addClient(req, res, filter)
 })
 var server = net.createServer(function(socket){
 	//socket.write('Echo server\r\n');
-	var channel = new sse.ServerEventSource()
-	bus.push(channel)
+	var channel = new sse.ServerEventSource({trackEventId:true, maxBufferSize:1000000})
 	socket.setEncoding()
 	socket.on('data', function(data){
 		var lines = data.split('\n')
@@ -61,6 +78,10 @@ var server = net.createServer(function(socket){
 		lines.forEach(function(line){
 			channel.send(line)
 		})
+	})
+	var index = bus.push(channel) - 1
+	socket.on('close', function(){
+		delete bus[index]
 	})
 })
 
