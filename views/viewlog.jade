@@ -122,12 +122,12 @@ html
 				form#filters
 					p
 						input#apply-re(type='checkbox', checked)
-						label(for='re') 正则过滤
+						label(for='apply-re') 正则过滤
 						input#use-re(type='button', value='传送门')
 						input#re(type='search')
 					p
 						input#apply-fn(type='checkbox')
-						label(for='fn') 函数过滤
+						label(for='apply-fn') 函数过滤
 						input#use-fn(type='button', value='传送门')
 						textarea#fn(cols=40, rows=8)
 							|function filter(event) {
@@ -177,7 +177,7 @@ html
 						document.getElementById('use-re').addEventListener('click', function() {
 							if (filterPattern)
 								eachSelectedChannel(function(channel, filter){
-									filter.value = filterPattern
+									filter.value = filterPattern.source
 								})
 						})
 						document.getElementById('use-fn').addEventListener('click', function() {
