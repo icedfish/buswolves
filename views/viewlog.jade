@@ -7,7 +7,7 @@ html
 		style
 			body, input {
 				font-family: 'Microsoft Yahei';
-				font-size: 12px;
+				font-size: 14px;
 				line-height: 1.5;
 			}
 			header, section {
@@ -20,24 +20,22 @@ html
 			nav form input[type="submit"] {
 				margin-left: 12em;
 			}
-			#viewer {
-				position: fixed;
-				bottom: 0;
-				left: 24%;
-				right: 0;
-				top: 0;
+			ol {
+				white-space: nowrap;
 			}
+
 			#logs {
 				overflow: auto;
 				color: white;
 				background: black;
 				font-family: Consolas, 'Courier New', monospace;
-				font-size: 12px;
-				line-height: 1.5;
+				font-size: 14px;
 			}
 			#logs li {
 				-webkit-transition: height 0.5s, color 0.5s;
 				height: 1.5em;
+				margin-left: -30px;
+				list-style:none;  //有行号显示的就不是原始数据格式了
 			}
 			#logs li[hidden] {
 				display: list-item;
@@ -79,10 +77,10 @@ html
 						each _, i in bus
 							li
 								label
-									input(type='checkbox')
+									input(type='checkbox',checked='checked')  //默认都选中，减少操作
 									output /bus/#{i}/
-								input(type='search')
-					input(type='submit', value='howl')
+								input(type='search',placeholder='后端条件（支持正则）')
+					input(type='submit', value='波若波罗密！')
 					script
 						document.getElementById('bus').addEventListener('submit', function(evt) {
 							reset()
@@ -101,9 +99,9 @@ html
 							}
 							evt.preventDefault()
 						})
+			label(for='filter') 动态过滤条件
+			input#filter(type='search',placeholder='支持正则')
 		section#viewer
-			label(for='filter') 过滤
-			input#filter(type='search')	
 			script
 				var filterPattern
 				var filterInput = document.getElementById('filter')
