@@ -18,7 +18,7 @@ html
 				padding-left: 0;
 			}
 			nav form input[type="submit"] {
-				margin-left: 12em;
+				margin-left: 8em;
 			}
 			textarea#fn, input#re {
 				display:block;
@@ -50,6 +50,7 @@ html
 			}
 		script
 			var logs, autoScroll
+			var maxRecords = 100000, count = 0
 			window.onload = function() {
 				logs = document.getElementById('logs')
 				autoScroll = document.getElementById('auto-scroll')
@@ -60,6 +61,17 @@ html
 					src.close()
 				}
 				logs.innerHTML = ''
+				count = 0
+			}
+			function stop() {
+				for (var i = 0; i < srcList.length; i++)
+					srcList[i]
+			}
+			function start() {
+				for (var i = 0; i < srcList.length; i++) {
+					srcList[i] = new EventSource(srcList[i].url)
+					srcList[i].onmessage = processMessage
+				}
 			}
 			function listen(url) {
 				var source = new EventSource(url)
@@ -67,15 +79,31 @@ html
 				source.onmessage = processMessage
 			}
 			function processMessage(evt) {
-				var li = document.createElement('li')
-				if (filterPattern && !filterPattern.test(evt.data) ||
-					filterFunction && !filterFunction(evt)) li.hidden = true
-				li.appendChild(document.createTextNode(evt.data))
-				li.dataset.type = evt.type
-				li.dataset.lastEventId = evt.lastEventId
-				li.dataset.timeStamp = evt.timeStamp
-				logs.appendChild(li)
-				if (autoScroll.checked) li.scrollIntoView()
+				uiTasks.push(function(){
+					if (count > maxRecords) {
+						pause()
+						maxRecords *= 2
+					}
+					console.log(evt.lastEventId)
+					var li = document.createElement('li')
+					if (filterPattern && !filterPattern.test(evt.data) ||
+						filterFunction && !filterFunction(evt)) li.hidden = true
+					li.appendChild(document.createTextNode(evt.data))
+					li.dataset.type = evt.type
+					li.dataset.lastEventId = evt.lastEventId
+					li.dataset.timeStamp = evt.timeStamp
+					logs.appendChild(li)
+					if (autoScroll.checked) li.scrollIntoView()
+					count++
+				})
+			}
+			var uiTasks = []
+			doTask()
+			function doTask() {
+				//console.log('do')
+				var task = uiTasks.shift()
+				if (task) task()
+				setTimeout(doTask, 10)
 			}
 			function updateLogs() {
 				var node = logs.lastChild
@@ -106,6 +134,9 @@ html
 		header
 			nav
 				form#bus
+					label(for='site')
+						| 站点
+					input#site(type='url', value='http://211.151.145.90:300')
 					ul
 						each url in urls
 							li
@@ -114,10 +145,31 @@ html
 									output #{url}
 								input(type='search',value='shanghai\.baixing\.com.*ershouqiche',size='40')	//加上默认值，免得一点就刮掉。。。
 					input(type='submit', value='般若波罗蜜！')
+					input#toggle(type='button', value='止')
 					label
 						input#auto-scroll(type='checkbox', checked)
 						| 滚
 					script
+						document.getElementById('site').addEventListener('change', function(evt) {
+							var url = this.value + '/bus'
+							console.log(url)
+							var req = new XMLHttpRequest()
+							req.open('GET', url, false)
+							req.setRequestHeader('Accept', 'application/json')
+							req.send()
+							req.onload = function() {
+								console.log(req.responseText)
+							}
+						})
+						document.getElementById('toggle').addEventListener('click', function(evt) {
+							if (this.value === '止') {
+								this.value = '行'
+								stop()
+							} else {
+								this.value = '止'
+								start()
+							}
+						})
 						document.getElementById('bus').addEventListener('submit', function(evt) {
 							reset()
 							eachSelectedChannel(function(channel, filter){
