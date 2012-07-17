@@ -12,9 +12,10 @@ app.configure(function(){
 	app.set('view options', { layout: false })
 	app.use(express.bodyParser())
 	app.use(express.methodOverride())
-	app.use(function(req, res) {
+	app.use(function(req, res, next) {
 		if (req.headers.origin)
 			res.setHeader('Access-Control-Allow-Origin', '*')
+		next()
 	})
 	app.use(app.router)
 	app.use(express.static(__dirname + '/public'))
