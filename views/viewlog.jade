@@ -65,7 +65,7 @@ html
 			}
 			function stop() {
 				for (var i = 0; i < srcList.length; i++)
-					srcList[i]
+					srcList[i].close()
 			}
 			function start() {
 				for (var i = 0; i < srcList.length; i++) {
@@ -81,7 +81,7 @@ html
 			function processMessage(evt) {
 				uiTasks.push(function(){
 					if (count > maxRecords) {
-						pause()
+						stop()
 						maxRecords *= 2
 					}
 					console.log(evt.lastEventId)
