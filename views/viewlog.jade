@@ -49,12 +49,17 @@ html
 				color: transparent;
 			}
 		script
+			var logs, autoScroll
+			window.onload = function() {
+				logs = document.getElementById('logs')
+				autoScroll = document.getElementById('auto-scroll')
+			}
 			var srcList = []
 			function reset() {
 				while (src = srcList.pop()) {
 					src.close()
 				}
-				document.getElementById('logs').innerHTML = ''
+				logs.innerHTML = ''
 			}
 			function listen(url) {
 				var source = new EventSource(url)
@@ -69,11 +74,11 @@ html
 				li.dataset.type = evt.type
 				li.dataset.lastEventId = evt.lastEventId
 				li.dataset.timeStamp = evt.timeStamp
-				document.getElementById('logs').appendChild(li)
-				li.scrollIntoView()
+				logs.appendChild(li)
+				if (autoScroll.checked) li.scrollIntoView()
 			}
 			function updateLogs() {
-				var node = document.getElementById('logs').lastChild
+				var node = logs.lastChild
 				while (node) {
 					node.hidden = filterPattern && !filterPattern.test(node.textContent) ||
 						filterFunction && !filterFunction({
@@ -109,6 +114,9 @@ html
 									output #{url}
 								input(type='search')
 					input(type='submit', value='般若波罗蜜！')
+					label
+						input#auto-scroll(type='checkbox', checked)
+						| 滚
 					script
 						document.getElementById('bus').addEventListener('submit', function(evt) {
 							reset()
