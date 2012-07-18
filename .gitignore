@@ -1,2 +1,3 @@
 test/*.log
 .gitattributes
+.DS_Store
