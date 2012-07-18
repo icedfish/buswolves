@@ -37,7 +37,7 @@ function findChannel(name) {
 		return bus[name]
 	else
 		return bus[name] =
-			new sse.ServerEventSource({trackEventId:true, maxBufferSize:1000000})
+			new sse.ServerEventSource()
 }
 			
 function busUrls() {

@@ -5,31 +5,75 @@ html
 		title BusWolves RealTime Log Supplier 
 		script(src='http://static.baixing.net/media/js/jquery-1.7.2.min.js')
 		style
-			body, input {
+			body, input, select, textarea {
 				font-family: 'Microsoft Yahei';
-				font-size: 14px;
+				font-size: 12px;
 				line-height: 1.5;
 			}
 			header, section {
-				margin: 1em 0;
+			}
+			#nav-toggle {
+				position: fixed;
+				top: 0;
+				right: 2.5em;
+				z-index: 2;
 			}
 			nav ul {
 				list-style: none;
 				padding-left: 0;
+				margin: 0;
 			}
 			nav form input[type="submit"] {
 				margin-left: 8em;
 			}
 			textarea#fn, input#re {
 				display:block;
+				min-width: 95%;
+			}
+			textarea#fn {
+				min-height: 8em;
+			}
+			nav {
+				position: fixed;
+				z-index: 1;
+				right: 2em;
+				background: white;
+				padding: 8px;
+				border-radius: 4px;
+				margin: 0 1em;
+				-webkit-transform-origin: top right;
+				-moz-transform-origin: top right;
+				-wekbit-transition-property: -webkit-transform;
+				-webkit-transition-duration: 0.5s;
+				-webkit-transition-timing-function: ease-in-out;
+				-moz-transition-property: -moz-transform;
+				-moz-transition-duration: 0.5s;
+				-moz-transition-timing-function: ease-in-out;
+				transition-property: transform;
+				transition-duration: 0.5s;
+				transition-timing-function: ease-in-out;
+			}
+			nav.collapse {
+				-webkit-transform: scale(0, 0);
+				-moz-transform: scale(0, 0);
+				transform: scale(0, 0);
+			}
+			#sites {
+				border: none;
+				white-space: nowrap;
+				margin-right: 4em;
+				padding: 0;
+			}
+			#site {
+				min-width: 15em;
 			}
 			#logs {
 				position: fixed;
-				bottom: 0;
-				left: 24%;
-				right: 0;
 				top: 0;
-				overflow: auto;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				overflow: scroll;
 				color: white;
 				background: black;
 				font-family: Consolas, 'Courier New', monospace;
@@ -38,9 +82,18 @@ html
 				white-space: nowrap;
 				list-style: none;
 				padding-left: 0;
+				margin: 0;
+			}
+			#log-controls {
+				position: fixed;
+				bottom: 1.5em;
+				right: 2.5em;
+				z-index: 3;
+				color: white;
 			}
 			#logs li {
 				-webkit-transition: height 0.5s, color 0.5s;
+				-moz-transition: height 0.5s, color 0.5s;
 				height: 1.5em;
 			}
 			#logs li[hidden] {
@@ -49,13 +102,13 @@ html
 				color: transparent;
 			}
 		script
+			var srcList = []
+			var maxRecords = 5000, count = 0
 			var logs, autoScroll
-			var maxRecords = 100000, count = 0
 			window.onload = function() {
 				logs = document.getElementById('logs')
 				autoScroll = document.getElementById('auto-scroll')
 			}
-			var srcList = []
 			function reset() {
 				while (src = srcList.pop()) {
 					src.close()
@@ -64,14 +117,18 @@ html
 				count = 0
 			}
 			function stop() {
+				var c = document.getElementById('toggle')
 				for (var i = 0; i < srcList.length; i++)
 					srcList[i].close()
+				if (c) c.value = '行'
 			}
 			function start() {
+				var c = document.getElementById('toggle')
 				for (var i = 0; i < srcList.length; i++) {
 					srcList[i] = new EventSource(srcList[i].url)
 					srcList[i].onmessage = processMessage
 				}
+				if (c) c.value = '止'
 			}
 			function listen(url) {
 				var source = new EventSource(url)
@@ -84,7 +141,7 @@ html
 						stop()
 						maxRecords *= 2
 					}
-					console.log(evt.lastEventId)
+					if (count % 100 === 0) console.log(count, evt.lastEventId)
 					var li = document.createElement('li')
 					if (filterPattern && !filterPattern.test(evt.data) ||
 						filterFunction && !filterFunction(evt)) li.hidden = true
@@ -103,7 +160,7 @@ html
 				//console.log('do')
 				var task = uiTasks.shift()
 				if (task) task()
-				setTimeout(doTask, 10)
+				setTimeout(doTask, 1)
 			}
 			function updateLogs() {
 				var node = logs.lastChild
@@ -132,54 +189,88 @@ html
 			}
 	body
 		header
+			input#nav-toggle(type='button', value='隐')
+			script
+				document.getElementById('nav-toggle').addEventListener('click', function(){
+					var nav = document.querySelector('body>header>nav')
+					if (this.value === '隐') {
+						this.value = '现'
+						nav.classList.add('collapse')
+					} else {
+						this.value = '隐'
+						nav.classList.remove('collapse')
+					}
+				})
 			nav
 				form#bus
-					label(for='site')
-						| 站点
-					input#site(type='url', value='http://211.151.145.90:300')
-					ul
-						each url in urls
-							li
-								label
-									input(type='checkbox', checked)
-									output #{url}
-								input(type='search',value='shanghai\.baixing\.com.*ershouqiche',size='40')	//加上默认值，免得一点就刮掉。。。
-					input(type='submit', value='般若波罗蜜！')
-					input#toggle(type='button', value='止')
-					label
-						input#auto-scroll(type='checkbox', checked)
-						| 滚
-					script
-						document.getElementById('site').addEventListener('change', function(evt) {
-							var url = this.value + '/bus'
-							console.log(url)
-							var req = new XMLHttpRequest()
-							req.open('GET', url, false)
-							req.setRequestHeader('Accept', 'application/json')
-							req.send()
-							req.onload = function() {
-								console.log(req.responseText)
-							}
-						})
-						document.getElementById('toggle').addEventListener('click', function(evt) {
-							if (this.value === '止') {
-								this.value = '行'
-								stop()
-							} else {
-								this.value = '止'
-								start()
-							}
-						})
-						document.getElementById('bus').addEventListener('submit', function(evt) {
-							reset()
-							eachSelectedChannel(function(channel, filter){
-								var url = channel.value + encodeURIComponent(filter.value)
-								console.log(url)
-								listen(url)
+					fieldset#sites
+						label(for='site')
+							| 站点：
+						input#site(type='url', list='sitelist')
+						script
+							document.getElementById('site').value = location.protocol + '//' + location.host
+						datalist#sitelist
+							select
+								option http://localhost:3000
+								option http://bj-web01:3000
+								option http://211.151.145.90:3000
+						input#connect(type='button', value='连之')
+						script
+							document.querySelector('datalist>select').addEventListener('change', function(evt){
+								var listId = evt.target.parentNode.id
+								document.querySelector('input[list="' + listId + '"]').value = evt.target.value
 							})
-							evt.preventDefault()
-						})
-				div#filters
+							document.getElementById('connect').addEventListener('click', function(evt){
+								var site = document.getElementById('site').value
+								var req = new XMLHttpRequest()
+								req.open('GET', site + '/bus', false)
+								req.setRequestHeader('Accept', 'application/json')
+								req.onload = function() {
+									stop()
+									document.querySelector('#channels ul').innerHTML = 
+										JSON.parse(this.responseText).map(function(src) {
+											return '<li><label><input type="checkbox" checked>' +
+												'<output>' + site + src + '</output></label>' +
+												'<input type="search" value="shanghai\.baixing\.com.*ershouqiche">'
+										}).join()
+								}
+								req.send()
+							})
+					fieldset#channels
+						legend 频道
+						ul
+							each url in urls
+								li
+									label
+										input(type='checkbox', checked)
+										output #{url}
+									input(type='search',value='',size='40')	//加上默认值，免得一点就刮掉。。。
+						input(type='submit', value='般若波罗蜜！')
+						input#toggle(type='button', value='止')
+						script
+							document.getElementById('toggle').addEventListener('click', function(evt) {
+								if (this.value === '止') {
+									stop()
+								} else {
+									start()
+								}
+							})
+							document.getElementById('bus').addEventListener('submit', function(evt) {
+								try {
+									reset()
+									eachSelectedChannel(function(channel, filter){
+										var url = channel.value + encodeURIComponent(filter.value)
+										console.log(url)
+										listen(url)
+									})
+								} catch (e) {
+									console.error(e)
+								} finally {
+									evt.preventDefault()
+								}
+							})
+				fieldset#filters
+					legend 自定义过滤器
 					p
 						input#apply-re(type='checkbox', checked)
 						label(for='apply-re') 正则过滤
@@ -189,7 +280,7 @@ html
 						input#apply-fn(type='checkbox')
 						label(for='apply-fn') 函数过滤
 						input#use-fn(type='button', value='传送门')
-						textarea#fn(cols=40, rows=8)
+						textarea#fn
 							|function filter(event) {
 							|	return event.type === 'message' &&
 							|		event.data.match(/.+/) &&
@@ -247,4 +338,8 @@ html
 								})
 						})
 		section
+			div#log-controls
+				label#auto-scroll-control
+					input#auto-scroll(type='checkbox', checked)
+					| 滚
 			ol#logs

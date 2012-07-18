@@ -2,13 +2,23 @@
 
 var EventEmitter = require('events').EventEmitter
 
-
 function ServerEventSource(option) {
-	this.option = option || {}
+
+	this.option = Object.create(ServerEventSource.defaultOption)
+	if (option) Object.keys(option).forEach(function(k){
+		this.option[k] = option[k]
+	}, this)
+	
 	this.events = []
 	this.bufferSize = 0
-	this.lastEventId = this.option.firstEventId || 10000
+	this.lastEventId = this.option.firstEventId
 	this.emitter = new EventEmitter()
+}
+
+ServerEventSource.defaultOption = {
+	trackEventId: true,
+	firstEventId: 10000,
+	maxBufferSize: 1000000, // about 2MB
 }
 
 ServerEventSource.headers = { 'Content-Type': 'text/event-stream' }
@@ -17,9 +27,13 @@ ServerEventSource.prototype.nextEventId = function () {
 	return this.option.trackEventId ? ++this.lastEventId : null
 }
 ServerEventSource.prototype.eventIndexOf = function (id) {
+	if (id == null || !this.option.trackEventId) return null
+	var i = this.events.length - 1 - this.lastEventId + parseInt(id)
+	if (!(i >= 0 && i < this.events.length)) i = -1
 }
 
 ServerEventSource.prototype.clear = function (lastEventId) {
+	console.log('clear', lastEventId)
 	if (lastEventId) {
 		var index = this.eventIndexOf(lastEventId) + 1
 		this.events.splice(0, index)
@@ -87,10 +101,7 @@ ServerEventSource.prototype.addClient = function (request, response, filter) {
 			} catch(e) {}
 		}
 	
-	var lastEventId = request.headers['Last-Event-ID']
-	var i = lastEventId == null ? 0 :
-			parseInt(lastEventId) - this.lastEventId - 1
-	if (!(i >= 0)) i = 0
+	var i = this.eventIndexOf(request.headers['Last-Event-ID']) + 1
 	while (i < this.events.length) {
 		push(this.events[i])
 		i++
@@ -105,20 +116,6 @@ ServerEventSource.prototype.addClient = function (request, response, filter) {
 
 
 /*
-EventSource.prototype.push = function (event, client) {
-	client.write(event)
-}
-
-EventSource.prototype.send = function (type, data) {
-	if (arguments.length === 1) {
-		type = 'message'
-		data = arguments[0]
-	}
-	this.events.push({
-		type: type,
-		data: data.replace(/^/gm, 'data: '),
-		id: this.nextId()
-	})
 setInterval(function () {
 	responses.forEach(function () {
 		res.write(':noop\n')
